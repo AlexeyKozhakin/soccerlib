@@ -36,7 +36,7 @@ session = DP.DataProcessing(
                                    'name_teams',
                                    'ratings'),
                         columns_to_drop=('high_corr',),
-                        y_columns=['Время гола'],
+                        y_columns=['result'],
                         imputer='iter')
 
 X_train, y_train = session.fit_transform(df_train)

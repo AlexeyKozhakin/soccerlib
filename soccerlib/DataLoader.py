@@ -2,7 +2,8 @@ import pandas as pd
 from soccerlib.DataCleaningFunctions import (get_unique_teams,
                                              add_rating_to_dataset_fit,
                                              add_rating_to_dataset_transform,
-                                             add_team_label_to_dataset)
+                                             add_team_label_to_dataset,
+                                             create_result_column)
 
 def DataLoader_test(file_paths):
     datasets_list = [pd.read_csv(file) for file in file_paths]
@@ -34,6 +35,7 @@ class DataLoader:
 
     def fit(self, dict_train_files):
         data_all_years, self.dict_rating, self.team_index = DataLoader_train(dict_train_files)
+        data_all_years['result'] = create_result_column(data_all_years)
 
         return data_all_years
 
@@ -43,6 +45,7 @@ class DataLoader:
         data_test = add_rating_to_dataset_transform(data_test,
                                                     self.dict_rating)
         data_test  = add_team_label_to_dataset(data_test, self.team_index)
+        data_test['result'] = create_result_column(data_test)
         return data_test
 
 
