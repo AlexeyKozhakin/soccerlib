@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import category_encoders as ce
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from soccerlib.DataCleaningFunctions import (clean_goal_time,
@@ -14,6 +15,9 @@ class DataProcessing:
                         'stat_params',
                         'label_teams',
                         'ratings'),
+                        encodings=(
+                        'teams_binary',
+                        ),
                         columns_to_drop=('high_corr',),
                         y_columns=('Время гола',),
                         imputer='iter'):
@@ -25,7 +29,21 @@ class DataProcessing:
 
     def fit_transform(self, raw_data):
         #================ Убрать косяки в результатах ==============
-        #================ удалить строки в которых нет результатов
+        #================ Binary encodings =========================
+        name_teams = []
+        if 'teams_binary' in encodings:
+            self.teams_home_encoder = ce.BinaryEncoder(cols=['team_home'])
+            data_teams_home_encoder = self.teams_home_encoder.fit_transform(raw_data)
+            self.teams_guest_encoder = ce.BinaryEncoder(cols=['team_guest'])
+            data_teams_guest_encoder = self.teams_guest_encoder.fit_transform(raw_data)
+            raw_data = pd.concat([raw_data,
+                                  data_teams_home_encoder,
+                                  data_teams_guest_encoder], axis=1)
+
+            print('Новые колонки home')
+        #============ Добавление названия команды ====================
+        elif 'name_teams' in self.X_columns:
+            name_teams = ['team_index_home', 'team_index_guest']
         #=========================== Очистка от 45+, 90+
         if 'Время гола' in self.y_columns:
             raw_data = clean_goal_time(raw_data)
@@ -34,10 +52,7 @@ class DataProcessing:
         stat_params = []
         if 'stat_params' in self.X_columns:
             stat_params = load_stat_params()
-        #============ Добавление названия команды ====================
-        name_teams = []
-        if 'name_teams' in self.X_columns:
-            name_teams = ['team_index_home', 'team_index_guest']
+
         # ============ Добавление рейтинга команды ===================
         rating_teams = []
         if 'ratings' in self.X_columns:
