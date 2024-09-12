@@ -1,3 +1,4 @@
 .idea
 data/*
 soccerlib/__pycache__/
+soccerlib/__pycache__/*

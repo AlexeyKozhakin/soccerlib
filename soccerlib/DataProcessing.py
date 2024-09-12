@@ -3,6 +3,7 @@ import pandas as pd
 import category_encoders as ce
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
+from sklearn.impute import KNNImputer
 from soccerlib.DataCleaningFunctions import (clean_goal_time,
                                    load_stat_params,
                                    get_final_columns,
@@ -25,22 +26,27 @@ class DataProcessing:
         self.y_columns = y_columns
         self.columns_to_drop = []
         self.columns_to_keep = []
-        self.imputer = imputer
+        self.imputer_type = imputer
+        self.encodings = encodings
 
     def fit_transform(self, raw_data):
         #================ Убрать косяки в результатах ==============
         #================ Binary encodings =========================
         name_teams = []
-        if 'teams_binary' in encodings:
+        if 'teams_binary' in self.encodings:
             self.teams_home_encoder = ce.BinaryEncoder(cols=['team_home'])
-            data_teams_home_encoder = self.teams_home_encoder.fit_transform(raw_data)
+            data_teams_home_encoder = self.teams_home_encoder.fit_transform(raw_data['team_home'])
             self.teams_guest_encoder = ce.BinaryEncoder(cols=['team_guest'])
-            data_teams_guest_encoder = self.teams_guest_encoder.fit_transform(raw_data)
+            data_teams_guest_encoder = self.teams_guest_encoder.fit_transform(raw_data['team_guest'])
             raw_data = pd.concat([raw_data,
                                   data_teams_home_encoder,
-                                  data_teams_guest_encoder], axis=1)
-
-            print('Новые колонки home')
+                                  data_teams_guest_encoder
+                                  ],
+                                 axis=1)
+            name_teams = list(data_teams_home_encoder.columns) + list(data_teams_guest_encoder.columns)
+            print(f'Новые колонки home:{name_teams}')
+            print(f'home:{len(data_teams_home_encoder.columns)}')
+            #print(f'guest:{len(data_teams_guest_encoder.columns)}')
         #============ Добавление названия команды ====================
         elif 'name_teams' in self.X_columns:
             name_teams = ['team_index_home', 'team_index_guest']
@@ -89,13 +95,25 @@ class DataProcessing:
         print(f"X (входные параметры): {X.shape}")
         print(f"y (прогнозируемый параметр): {y.shape}")
         # ================ Fill NAN ===================================
-        self.imputer = IterativeImputer(random_state=100, max_iter=10)
-        # fit on the dataset
-        self.imputer.fit(X)
-        X_iter = self.imputer.transform(X)
+        if self.imputer_type=='iter':
+            self.imputer = IterativeImputer(random_state=100, max_iter=10)
+            # fit on the dataset
+            self.imputer.fit(X)
+            X_iter = self.imputer.transform(X)
+        elif self.imputer_type=='knn':
+            pass
         return X_iter, y
 
     def transform(self, raw_test_data):
+
+        if 'teams_binary' in self.encodings:
+            data_teams_home_encoder = self.teams_home_encoder.transform(raw_test_data['team_home'])
+            data_teams_guest_encoder = self.teams_guest_encoder.transform(raw_test_data['team_guest'])
+            raw_test_data = pd.concat([raw_test_data,
+                                  data_teams_home_encoder,
+                                  data_teams_guest_encoder
+                                  ],
+                                 axis=1)
 
         X = raw_test_data[self.final_columns].copy()
         X = question_sign_tire_to_nan(X)
@@ -110,6 +128,23 @@ class DataProcessing:
         X_iter = self.imputer.transform(X)
         return X_iter, y
 
+    def transform_predict(self, raw_test_data):
 
+        if 'teams_binary' in self.encodings:
+            data_teams_home_encoder = self.teams_home_encoder.transform(raw_test_data['team_home'])
+            data_teams_guest_encoder = self.teams_guest_encoder.transform(raw_test_data['team_guest'])
+            raw_test_data = pd.concat([raw_test_data,
+                                  data_teams_home_encoder,
+                                  data_teams_guest_encoder
+                                  ],
+                                 axis=1)
 
+        X = raw_test_data[self.final_columns].copy()
+        X = question_sign_tire_to_nan(X)
 
+        # Проверим разделение
+        print(f"X (входные параметры): {X.shape}")
+        # ================ Fill NAN ===================================
+        self.imputer.fit(X)
+        X_iter = self.imputer.transform(X)
+        return X_iter

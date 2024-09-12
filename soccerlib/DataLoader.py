@@ -48,8 +48,10 @@ class DataLoader:
         data_test['result'] = create_result_column(data_test)
         return data_test
 
+    def transform_predict(self, list_test_files):
+        data_test = DataLoader_test(list_test_files)
 
-
-
-
-
+        data_test = add_rating_to_dataset_transform(data_test,
+                                                    self.dict_rating)
+        data_test  = add_team_label_to_dataset(data_test, self.team_index)
+        return data_test
